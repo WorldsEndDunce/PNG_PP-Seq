@@ -1,4 +1,4 @@
-From the original directory:
+From the original readme:
 # PP-Seq
 
 This repo implements the point process model of neural sequences (PP-Seq) described in:
