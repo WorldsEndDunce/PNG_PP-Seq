@@ -1,4 +1,9 @@
+This forked repository uses the PP-Seq algorithm to detect repeated firings of polychronous neuronal groups (PNGs) in data. Currently, the code focuses on stress-testing the algorithm on multiple instances of planted sequences. Research endeavors are documented [here](https://docs.google.com/document/d/135YVOKIUejlhzhcud6MMVL1u-tEZETtClIymirDUmZI/edit?usp=sharing).
+![image](https://user-images.githubusercontent.com/71671264/180329747-99292855-f9f2-4615-a699-5ce7eaad1616.png)
+
+
 From the original readme:
+
 # PP-Seq
 
 This repo implements the point process model of neural sequences (PP-Seq) described in:
