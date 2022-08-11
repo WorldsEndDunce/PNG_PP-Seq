@@ -1,3 +1,9 @@
+# Global variables for PP-Almost-Seq Purposes
+samples = 0
+N = 100
+newClusterProbs = zeros(N)
+spikeFreq = zeros(N)
+# file = open("data/output.txt", "w")
 
 """
 Run gibbs sampler.
@@ -42,7 +48,7 @@ function gibbs_sample!(
     # ======== MAIN LOOP ======== #
 
     for s = 1:num_samples
-
+        global samples = s
         # Update spike assignments in random order.
         Random.shuffle!(spike_order)
         for i = spike_order
@@ -50,6 +56,14 @@ function gibbs_sample!(
             assignments[i] = gibbs_add_datapoint!(model, spikes[i])
         end
 
+        # End of anneal summary stats
+        if s == 2000
+            avgProbs = zeros(N)
+            for i = 1:N
+                avgProbs[i] = newClusterProbs[i] / spikeFreq[i]
+            end
+            println("List of final avg new cluster log_probs: " * string(avgProbs))
+        end
         # Add extra split merge moves.
         split_merge_sample!(
             model,
@@ -145,7 +159,6 @@ function gibbs_add_datapoint!(model::SeqModel, x::Spike)
     
     # Grab vector without allocating new memory.
     log_probs = resize!(model._K_buffer, K + 2)
-
     # Iterate over model events, indexed by k = {1, 2, ..., K}.
     for (k, event) in enumerate(model.sequence_events)
 
@@ -178,13 +191,20 @@ function gibbs_add_datapoint!(model::SeqModel, x::Spike)
         + model.globals.bkgd_log_proportions[x.neuron]
         - log(model.max_time)
     )
+    if (samples == 2000) 
+        global newClusterProbs[x.neuron] += log_probs[K + 1] 
+        global spikeFreq[x.neuron] += 1
+        println("Spike: " * string(x) * " New cluster prob: " * string(log_probs[K + 1]))
+    end
 
     # Sample new assignment for spike x.
     z = sample_logprobs!(log_probs)
+     # Print out final new cluster probability
 
     # New sample corresponds to background, do nothing.
     if z == (K + 2)
         return -1
+        
 
     # New sample corresponds to new sequence event / cluster.
     elseif z == (K + 1)

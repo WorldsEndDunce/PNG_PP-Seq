@@ -128,8 +128,7 @@ function SeqModel(
         neuron_response_profile::NormalInvChisq,
         bkgd_amplitude::RateGamma,
         bkgd_proportions::SymmetricDirichlet
-    )
-
+)  
     SeqModel(max_time,
           max_sequence_length,
           1, # number of warps

@@ -95,7 +95,7 @@ function gibbs_sample!(
                 )
                 assgn_partition[p][i] = gibbs_add_datapoint!(
                     model.submodels[p], 
-                    spk_partition[p][i]
+                    spk_partition[p][i], s
                 )
             end
         end
