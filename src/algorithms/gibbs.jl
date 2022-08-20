@@ -1,8 +1,11 @@
 # Global variables for PP-Almost-Seq Purposes
 samples = 0
 N = 100
+seqThresh = 10  # Change to not be as arbitrary
+almostCutOff = trunc(Int, 0.2 * N)
 newClusterProbs = zeros(N)
 spikeFreq = zeros(N)
+seqFreq = zeros(N, 2)
 # file = open("data/output.txt", "w")
 
 """
@@ -18,7 +21,6 @@ function gibbs_sample!(
         save_every::Int64;
         verbose::Bool=false
     )
-
     # Initialize spike assignments.
     assignments = initial_assignments
     recompute!(model, spikes, assignments)
@@ -58,11 +60,52 @@ function gibbs_sample!(
 
         # End of anneal summary stats
         if s == 2000
-            avgProbs = zeros(N)
+            avgProbs = zeros(N, 2)
+            seqIndices = []
+            almostIndices = []
+            potList = Dict{Int64, Dict{Int64, Int64}}()
             for i = 1:N
-                avgProbs[i] = newClusterProbs[i] / spikeFreq[i]
+                avgProbs[i, 1] = i
+                avgProbs[i, 2] = spikeFreq[i] > 0 ? newClusterProbs[i] / spikeFreq[i] : -999.9
             end
+            global seqFreq = seqFreq[sortperm(seqFreq[:, 2]), :] 
+            avgProbs = sortslices(avgProbs,dims=1,by=x->x[2],rev=true)
             println("List of final avg new cluster log_probs: " * string(avgProbs))
+            println("List of color frequencies per index: " * string(seqFreq))
+            i = N
+            while (seqFreq[i, 2] >= seqThresh)
+                push!(seqIndices, seqFreq[i, 1])
+                i -= 1
+            end
+            i = 1
+            while (avgProbs[i, 2] > -12) 
+                if !(avgProbs[i, 1] in seqIndices)
+                    push!(almostIndices, avgProbs[i, 1])
+                end
+                i += 1
+            end
+            println("List of often-marked neurons most likely to be in a sequence: " * string(seqIndices))
+            println("List of less-marked neurons most likely to be in a sequence: " * string(almostIndices))
+            spikes = sort(spikes, by = x -> x.timestamp)
+            for i = 1:length(spikes)
+                if spikes[i].neuron in almostIndices
+                    if get(potList, spikes[i].neuron, -1) == -1
+                        potList[spikes[i].neuron] = Dict()
+                    end
+                    for j = -5:5
+                        if i + j >= 1 && i + j <= length(spikes) && spikes[i + j].neuron != spikes[i].neuron
+                            if get(potList[spikes[i].neuron], spikes[i + j].neuron, -1) == -1
+                                potList[spikes[i].neuron][spikes[i + j].neuron] = 0
+                            end
+                            potList[spikes[i].neuron][spikes[i + j].neuron] += 1
+                        end
+                    end
+                end
+            end
+            for (key, value) in potList
+                sort(collect(potList[key]), by = x->x[2])
+            end
+            println(potList)
         end
         # Add extra split merge moves.
         split_merge_sample!(
@@ -144,7 +187,6 @@ where lambda0 = m.bkgd_rate and (alpha, beta) are the shape and
 rate parameters of the gamma prior on sequence event amplitudes.
 """
 function gibbs_add_datapoint!(model::SeqModel, x::Spike)
-
     # Create log-probability vector to sample assignments.
     #
     #  - We need to sample K + 2 possibilities. There are K existing clusters
@@ -191,29 +233,32 @@ function gibbs_add_datapoint!(model::SeqModel, x::Spike)
         + model.globals.bkgd_log_proportions[x.neuron]
         - log(model.max_time)
     )
-    if (samples == 2000) 
-        global newClusterProbs[x.neuron] += log_probs[K + 1] 
-        global spikeFreq[x.neuron] += 1
-        println("Spike: " * string(x) * " New cluster prob: " * string(log_probs[K + 1]))
-    end
-
+    og_lp = copy(log_probs)
     # Sample new assignment for spike x.
     z = sample_logprobs!(log_probs)
-     # Print out final new cluster probability
-
+    # Print out final new cluster probability
+    global seqFreq[x.neuron, 1] = x.neuron
     # New sample corresponds to background, do nothing.
     if z == (K + 2)
+        if (samples == 2000) 
+            global newClusterProbs[x.neuron] += og_lp[K + 1] 
+            global spikeFreq[x.neuron] += 1
+        end
         return -1
-        
-
     # New sample corresponds to new sequence event / cluster.
     elseif z == (K + 1)
+        if (samples == 2000) 
+            global seqFreq[x.neuron, 2] += 1 
+        end
         return add_event!(model, x)  # returns new assignment
 
     # Otherwise, add datapoint to existing sequence event. Note
     # that z is an integer in [1:K], while assignment indices
     # can be larger and non-contiguous.
     else
+        if (samples == 2000) 
+            global seqFreq[x.neuron, 2] += 1 
+        end
         k = model.sequence_events.indices[z]  # look up assignment index.
         return add_datapoint!(model, x, k)
     end
