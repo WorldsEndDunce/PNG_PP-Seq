@@ -1,7 +1,8 @@
-# Global variables for PP-Almost-Seq Purposes
-samples = 0
-N = 100
-seqThresh = 10  # Change to not be as arbitrary
+# =============== Global variables for PP-Almost-Seq ===================== #
+samples = 0  # Keep count of number of samples so far
+N = 100  # Number of neurons
+seqThresh = 10  # Change to not be as arbitrary-- definition for "often-marked" neuron
+newClusterThresh = -12  # Cutoff for high log new cluster prob
 almostCutOff = trunc(Int, 0.2 * N)
 newClusterProbs = zeros(N)
 spikeFreq = zeros(N)
@@ -58,52 +59,54 @@ function gibbs_sample!(
             assignments[i] = gibbs_add_datapoint!(model, spikes[i])
         end
 
-        # End of anneal summary stats
-        if s == 2000
-            avgProbs = zeros(N, 2)
-            seqIndices = []
-            almostIndices = []
-            potList = Dict{Int64, Dict{Int64, Int64}}()
+        # ============ PP-Almost-Seq Code (very bad) ================ #
+        if s == 2000  # End of the final anneal
+            avgProbs = zeros(N, 2)  # 1st column is neuron index, 2nd column is cluster prob
+            seqIndices = []  # List of indices often in sequences
+            almostIndices = []  # List of indices most likely to be in sequence but not often in sequences
+            potList = Dict{Int64, Dict{Int64, Int64}}()  # List of potential clusters
             for i = 1:N
                 avgProbs[i, 1] = i
-                avgProbs[i, 2] = spikeFreq[i] > 0 ? newClusterProbs[i] / spikeFreq[i] : -999.9
+                avgProbs[i, 2] = spikeFreq[i] > 0 ? newClusterProbs[i] / spikeFreq[i] : -999.9  # Calculate avg new cluster probability (-999.9 is sentinel value to indicate that a neuron never spiked)
             end
             global seqFreq = seqFreq[sortperm(seqFreq[:, 2]), :] 
-            avgProbs = sortslices(avgProbs,dims=1,by=x->x[2],rev=true)
+            avgProbs = sortslices(avgProbs,dims=1,by=x->x[2],rev=true)  # Sort neurons by highest to lowest (least to most negative) avg log new cluster probability
             println("List of final avg new cluster log_probs: " * string(avgProbs))
             println("List of color frequencies per index: " * string(seqFreq))
             i = N
-            while (seqFreq[i, 2] >= seqThresh)
+            while (seqFreq[i, 2] >= seqThresh)  # Make list of most sequenced neurons
                 push!(seqIndices, seqFreq[i, 1])
                 i -= 1
             end
             i = 1
-            while (avgProbs[i, 2] > -12) 
-                if !(avgProbs[i, 1] in seqIndices)
-                    push!(almostIndices, avgProbs[i, 1])
+            while (avgProbs[i, 2] > newClusterThresh)   
+                if !(avgProbs[i, 1] in seqIndices)  # Add an index to the list of almost colored indices if its probability is high enough and it's not often marked
+                    push!(almostIndices, avgProbs[i, 1])  
                 end
                 i += 1
             end
             println("List of often-marked neurons most likely to be in a sequence: " * string(seqIndices))
             println("List of less-marked neurons most likely to be in a sequence: " * string(almostIndices))
             spikes = sort(spikes, by = x -> x.timestamp)
+
+            # Window tallying process
             for i = 1:length(spikes)
                 if spikes[i].neuron in almostIndices
                     if get(potList, spikes[i].neuron, -1) == -1
-                        potList[spikes[i].neuron] = Dict()
+                        potList[spikes[i].neuron] = Dict()  # Create new dictionary of neighboring spike freqs if it doesn't exist
                     end
-                    for j = -5:5
-                        if i + j >= 1 && i + j <= length(spikes) && spikes[i + j].neuron != spikes[i].neuron
+                    for j = -5:5  # For the 5 spikes directly before and afterwards
+                        if i + j >= 1 && i + j <= length(spikes) && spikes[i + j].neuron != spikes[i].neuron  # Make sure the spike is not from the same neuron or out of range
                             if get(potList[spikes[i].neuron], spikes[i + j].neuron, -1) == -1
-                                potList[spikes[i].neuron][spikes[i + j].neuron] = 0
+                                potList[spikes[i].neuron][spikes[i + j].neuron] = 0  
                             end
-                            potList[spikes[i].neuron][spikes[i + j].neuron] += 1
+                            potList[spikes[i].neuron][spikes[i + j].neuron] += 1  # Count neighboring spike index frequencies
                         end
                     end
                 end
             end
-            for (key, value) in potList
-                sort(collect(potList[key]), by = x->x[2])
+            for (key, dict) in potList  # TODO: Sort the dictionary by value properly
+                filter!(x->x.first != 1, dict)
             end
             println(potList)
         end
@@ -240,14 +243,14 @@ function gibbs_add_datapoint!(model::SeqModel, x::Spike)
     global seqFreq[x.neuron, 1] = x.neuron
     # New sample corresponds to background, do nothing.
     if z == (K + 2)
-        if (samples == 2000) 
+        if (samples == 2000)   # Sum new cluster probabilities at final sample
             global newClusterProbs[x.neuron] += og_lp[K + 1] 
             global spikeFreq[x.neuron] += 1
         end
         return -1
     # New sample corresponds to new sequence event / cluster.
     elseif z == (K + 1)
-        if (samples == 2000) 
+        if (samples == 2000)  # Keep count of final frequency each neuron appears in a sequence
             global seqFreq[x.neuron, 2] += 1 
         end
         return add_event!(model, x)  # returns new assignment
@@ -256,7 +259,7 @@ function gibbs_add_datapoint!(model::SeqModel, x::Spike)
     # that z is an integer in [1:K], while assignment indices
     # can be larger and non-contiguous.
     else
-        if (samples == 2000) 
+        if (samples == 2000)  # Keep count of final frequency each neuron appears in a sequence
             global seqFreq[x.neuron, 2] += 1 
         end
         k = model.sequence_events.indices[z]  # look up assignment index.
