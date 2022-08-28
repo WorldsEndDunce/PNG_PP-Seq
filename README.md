@@ -1,4 +1,10 @@
-This forked repository uses the PP-Seq algorithm to detect repeated firings of polychronous neuronal groups (PNGs) in data. Currently, the code focuses on stress-testing the algorithm on multiple instances of planted sequences. Research endeavors are documented [here](https://docs.google.com/document/d/135YVOKIUejlhzhcud6MMVL1u-tEZETtClIymirDUmZI/edit?usp=sharing).
+# PP-Almost-Seq
+This forked repository uses a modified PP-Seq algorithm called "PP-Almost-Seq" to detect repeated firings of polychronous neuronal groups (PNGs) in data and detect the next-best-candidate sequences. PNGs are collections of neurons that fire with a specific order and delays and are theorized to store memories in the brain. Currently, the code focuses on stress-testing the algorithm on multiple instances of planted sequences. Research endeavors are documented [here](https://docs.google.com/document/d/135YVOKIUejlhzhcud6MMVL1u-tEZETtClIymirDUmZI/edit?usp=sharing). To learn more about my research, you can also peruse the slides and/or poster link at the top of the documentation.
+
+All major PNG-related files are in the folder labeled izhikevich_pngs. One can use the theDataMachine Python file to construct a network of neurons using the ![Brian 2])https://brian2.readthedocs.io/en/stable/) simulator and export the spike data into a suitable format for PP-(Almost-)Seq. The png and autoPng files use the PP-Almost-Seq algorithm to cluster spike data into sequences. autoPng allows the user to analyze multiple spike data files in one runthrough, and both save the resulting graph as a png (the image file format) in the graphs folder. For information on how to use autoPng and png, check out the songbird demo folder provided by the original authors.
+
+The prototype PP-Almost-Seq code can be found in the gibbs.jl file. The author plans to clean up and sort the currently extremely long dictionary output. In the theDataMachine file, there are multiple functions to trigger sequences in data with various instances and delays. There is also a section of code that allows one to embed PNGs in the network via network connectivity and weights.
+
 ![image](https://user-images.githubusercontent.com/71671264/180329747-99292855-f9f2-4615-a699-5ce7eaad1616.png)
 
 
