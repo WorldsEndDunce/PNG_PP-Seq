@@ -1,13 +1,7 @@
 # PP-Almost-Seq
 This forked repository uses a modified PP-Seq algorithm called "PP-Almost-Seq" to detect repeated firings of polychronous neuronal groups (PNGs) in data and detect the next-best-candidate sequences. PNGs are collections of neurons that fire with a specific order and delays and are theorized to store memories in the brain. Currently, the code focuses on stress-testing the algorithm on multiple instances of planted sequences. Research endeavors are documented [here](https://docs.google.com/document/d/135YVOKIUejlhzhcud6MMVL1u-tEZETtClIymirDUmZI/edit?usp=sharing). To learn more about my research, you can also peruse the slides at the top of the documentation or check out this poster:
-<div style="position: relative; width: 100%; height: 0; padding-top: 66.6667%;
- padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden;
- border-radius: 8px; will-change: transform;">
-  <iframe loading="lazy" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0;margin: 0;"
-    src="https:&#x2F;&#x2F;www.canva.com&#x2F;design&#x2F;DAFJDj8_7PE&#x2F;view?embed" allowfullscreen="allowfullscreen" allow="fullscreen">
-  </iframe>
-</div>
-<a href="https:&#x2F;&#x2F;www.canva.com&#x2F;design&#x2F;DAFJDj8_7PE&#x2F;view?utm_content=DAFJDj8_7PE&amp;utm_campaign=designshare&amp;utm_medium=embeds&amp;utm_source=link" target="_blank" rel="noopener">CURIS Poster</a> by Allison Tee
+
+![CURIS Poster](https://user-images.githubusercontent.com/71671264/192898451-d4bb3005-c925-4b3b-bca7-b3feebbce70a.png)
 
 All major PNG-related files are in the folder labeled izhikevich_pngs. One can use the theDataMachine Python file to construct a network of neurons using the ![Brian 2](https://brian2.readthedocs.io/en/stable/) simulator and export the spike data into a suitable format for PP-(Almost-)Seq. The png and autoPng files use the PP-Almost-Seq algorithm to cluster spike data into sequences. autoPng allows the user to analyze multiple spike data files in one runthrough, and both save the resulting graph as a png (the image file format) in the graphs folder. For information on how to use autoPng and png, check out the songbird demo folder provided by the original authors.
 
